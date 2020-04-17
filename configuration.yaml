@@ -14,6 +14,14 @@ weather:
   - platform: darksky
     api_key: !secret darksky
 
+#Speedtest Configuration
+speedtestdotnet:
+  scan_interval:
+    hours: 1
+  monitored_conditions:
+    - ping
+    - download
+    - upload
 
 
 group: !include groups.yaml
