@@ -10,6 +10,12 @@ default_config:
 tts:
   - platform: google_translate
 
+weather:
+  - platform: darksky
+    api_key: !secret darksky
+
+
+
 group: !include groups.yaml
 automation: !include automations.yaml
 script: !include scripts.yaml
