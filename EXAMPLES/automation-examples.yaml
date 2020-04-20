@@ -1,0 +1,250 @@
+#####################################################
+############## FISH TANK EASY SWITCHES ##############
+#####################################################
+
+### CO2 Automations
+
+  - alias: "Turn on CO2"
+    initial_state: 'true'
+    trigger:
+      - platform: time
+        at: '9:45:00'
+    action:
+      service: switch.turn_on
+      entity_id: switch.fishtank_co2
+
+
+
+  - alias: "Turn on O2 - Daytime"
+    initial_state: 'true'
+    trigger:
+      platform: time_pattern
+      hours: '/1'
+    condition:
+      - condition: template
+        value_template: >
+          {{ now().hour > 7 or now().hour <= 20}}
+    action:
+      - service: switch.turn_on
+        entity_id: switch.fishtank_air
+      - delay:
+          minutes: 5
+      - service: switch.turn_off
+        entity_id: switch.fishtank_air
+
+
+################################################
+############## LIGHT AND SWITCHES ##############
+################################################
+### Turn on a light after sunset
+
+  - alias: "Turn on a light after sunset"
+    initial_state: 'true'
+    trigger:
+      - platform: sun
+        event: sunset
+        offset: "00:03:00"
+    action:
+      service: switch.turn_on
+      entity_id: switch.floorlamp
+
+
+
+### Turn on mood lights after sunset
+
+  - alias: "Turn on lights after sunset"
+    initial_state: 'true'
+    trigger:
+      - platform: sun
+        event: sunset
+        offset: "-00:1:00"
+    condition:
+      - condition: state
+        entity_id: group.household
+        state: 'home'
+    action:
+      service: script.turn_on
+      entity_id: script.night_light
+
+### Turn off lights when nobody at home
+
+  - alias: "Turn off lights when nobody at home"
+    initial_state: 'true'
+    trigger:
+      - platform: state
+        entity_id: group.household
+        from: 'home'
+        to: 'not_home'
+    action:
+      service: script.turn_on
+      entity_id: script.lights_off
+
+
+### Turn on lights when anyone arriving home at night
+
+  - alias: "Turn on lights when anyone arriving home at night"
+    initial_state: 'true'
+    trigger:
+      - platform: state
+        entity_id: group.household
+        from: 'not_home'
+        to: 'home'
+    condition:
+      - condition: numeric_state
+        entity_id: sun.sun
+        value_template: '{{ state.attributes.elevation }}'
+        below: 0
+    action:
+      service: script.turn_on
+      entity_id: script.night_light
+
+
+### Turn on lights if camera detects motion
+
+  - alias: "Turn on Garage lights on movement"
+    initial_state: 'true'
+    trigger:
+      platform: state
+      entity_id: binary_sensor.camera_motion_garage
+      to: 'on'
+    condition:
+      condition: state
+      entity_id: sun.sun
+      state: 'below_horizon'
+    action:
+        service: light.turn_on
+        entity_id: light.garage_light
+
+
+### Turn off lights if no motion for a while
+
+  - alias: "Turn off Garage lights when no movement"
+    initial_state: 'true'
+    trigger:
+      platform: state
+      entity_id: binary_sensor.camera_motion_garage
+      to: 'off'
+      for:
+          minutes: 10
+    condition:
+      - condition: state
+        entity_id: sun.sun
+        state: 'below_horizon'
+    action:
+        service: light.turn_off
+        entity_id: light.garage_light
+
+
+### Turn OFF Living Room Floor Lamp after 9PM Sun-Thur
+
+  - alias: "Turn off Floor lamp at 9PM Sun-Thur"
+    initial_state: 'true'
+    trigger:
+      - platform: time
+        at: '21:00:00'
+    condition:
+      condition: time
+      weekday:
+        - sun
+        - mon
+        - tue
+        - wed
+        - thu
+    action:
+      service: switch.turn_off
+      entity_id: switch.living_room_lamp
+
+### Turn on livingroom lights if pause the movie after sunset.
+
+  - alias: "Media player paused"
+    initial_state: 'true'
+    trigger:
+      - platform: state
+        entity_id:
+          -  media_player.plex_videoton
+        to: 'paused'
+    condition:
+      - condition: state
+        entity_id: sun.sun
+        state: 'below_horizon'
+    action:
+        service: script.turn_on
+        entity_id: script.media_player_stoped
+
+### Turn off livingroom lights if the movie is playing.
+
+  - alias: "Media player playing"
+    initial_state: 'true'
+    trigger:
+      - platform: state
+        entity_id:
+          - media_player.plex_videoton
+        to: 'playing'
+    condition:
+      - condition: state
+        entity_id: sun.sun
+        state: 'below_horizon'
+    action:
+        service: script.turn_on
+        entity_id: script.media_player_playing
+
+
+
+######################################
+############## DOORBELL ##############
+######################################
+
+
+# Turns off the doorbell chime after 10pm.
+# Turns it on again in the morning @ 7am.
+
+  - alias: "Doorbell off after 8pm"
+    trigger:
+      platform: time
+      at: "22:00:00"
+    action:
+      service: switch.turn_off
+      entity_id: switch.doorbell_chime_active
+
+  - alias: "Doorbell on after 7am"
+    trigger:
+      platform: time
+      at: "07:00:00"
+    action:
+      service: switch.turn_on
+      entity_id: switch.doorbell_chime_active
+
+
+# This automation triggers when the doorbell button is pushed
+# and sends out a notification to our Phones.
+
+  - alias: "Doorbell Notifications"
+    trigger:
+      platform: state
+      entity_id: binary_sensor.doorbell_button
+      to: 'on'
+    action:
+      service: script.turn_on
+      entity_id: script.front_door_gif
+
+
+
+
+#################################
+############## BED ##############
+#################################
+
+
+# Heat left bed side if occupied and bed becomes cold
+  - alias: "Peter Bed Heating at Night"
+    #initial_state: 'true'
+    trigger:
+      - platform: template
+        value_template: '{% if (states.sensor.eight_left_bed_temperature.state|float) < (states.input_number.eight_left_bed_temperature_threshold.state|float)%}true{%endif%}'
+    condition:
+      - condition: state
+        entity_id: binary_sensor.eight_left_bed_presence
+        state: 'on'
+    action:
+      service: script.turn_on
+      entity_id: script.heat_peter_bed_for_30_min

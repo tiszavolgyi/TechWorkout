@@ -1,0 +1,177 @@
+
+### Turn ON Lights after Sunset
+
+night_light:
+  sequence:
+    - service: scene.turn_on
+      entity_id: scene.living_room_night
+    - delay:
+        milliseconds: 100
+    - service_template: >
+        {% if is_state('group.family', 'home') %}
+          scene.turn_on
+        {% else %}
+          scene.turn_off
+        {% endif %}
+      entity_id: scene.office_night
+    - delay:
+        milliseconds: 100
+    - service: scene.turn_on
+      entity_id: scene.dining_room_night
+    - delay:
+        milliseconds: 100
+    - service: scene.turn_on
+      entity_id: scene.stairs_night
+    - delay:
+        milliseconds: 100
+    - service: scene.turn_on
+      entity_id: scene.patio_night
+    - delay:
+        milliseconds: 100
+    - service: scene.turn_on
+      entity_id: scene.garden_night
+    - delay:
+        milliseconds: 100
+    - service_template: >
+        {% if is_state('group.family', 'home') %}
+          scene.turn_on
+        {% else %}
+          scene.turn_off
+        {% endif %}
+      entity_id: scene.bedroom_night
+
+
+
+
+
+### Turn OFF Lights except patio (Malvin the dog)
+
+lights_off:
+  sequence:
+    - service: scene.turn_on
+      entity_id: scene.living_room_off
+    - delay:
+        milliseconds: 100
+    - service: scene.turn_on
+      entity_id: scene.office_off
+    - delay:
+        milliseconds: 100
+    - service: scene.turn_on
+      entity_id: scene.dining_room_off
+    - delay:
+        milliseconds: 100
+    - service: scene.turn_on
+      entity_id: scene.stairs_off
+    - delay:
+        milliseconds: 100
+    - service: scene.turn_on
+      entity_id: scene.kitchen_off
+    - delay:
+        milliseconds: 100
+    - service: scene.turn_on
+      entity_id: scene.bedroom_off
+    - delay:
+        milliseconds: 100
+    - service: scene.turn_on
+      entity_id: scene.garden_off
+
+
+
+##########################################
+### Scripts for Media Player Automations
+##########################################
+
+### Lights while watching a movie
+
+media_player_playing:
+  sequence:
+    - service: scene.turn_on
+      entity_id: scene.living_room_movie
+    - delay:
+        milliseconds: 100
+    - service: scene.turn_on
+      entity_id: scene.stairs_movie
+
+### Lights when stop watching a movie
+
+media_player_stoped:
+  sequence:
+    - service: scene.turn_on
+      entity_id: scene.living_room_night
+    - delay:
+        milliseconds: 100
+    - service: scene.turn_on
+      entity_id: scene.stairs_night
+
+
+#######################################
+### Scripts working with cameras
+#######################################
+
+
+### Making photos from the front door, used in doorbell automation
+### I removed sending the gif, because animated images are not currently usable
+### with the Notifications API, and converted to a single frame...
+
+front_door_gif:
+  alias: Front Door Gif
+  sequence:
+  - data:
+      entity_id: camera.front_door
+      filename: /home/homeassistant/.homeassistant/www/tmp/frontdoor1.png
+    service: camera.snapshot
+  - delay:
+      milliseconds: 100
+  - data:
+      entity_id: camera.front_door
+      filename: /home/homeassistant/.homeassistant/www/tmp/frontdoor2.png
+    service: camera.snapshot
+  - delay:
+      milliseconds: 100
+  - data:
+      entity_id: camera.front_door
+      filename: /home/homeassistant/.homeassistant/www/tmp/frontdoor3.png
+    service: camera.snapshot
+  - delay:
+      milliseconds: 100
+  - service: shell_command.snapshot_frontdoor_gif
+  # - delay: '00:00:03'
+  - service: notify.html5_push_notifications
+    data:
+      title: 'Front Door'
+      message: 'There is someone at the door!'
+      data:
+        tag: alert
+        url: 'https://ha.tiszavolgyi.com'
+        image: "https://ha.tiszavolgyi.com/local/tmp/frontdoor1.png"
+        vibrate:
+          - 300
+          - 100
+          - 400
+        renotify: 0
+        timestamp: '%m%d%H%M'
+        actions:
+          - action: "open_door"
+            title: "Open the Door"
+
+
+#######################################
+### Script for Bed heating
+#######################################
+
+
+# Heat up the mattress before we go to sleep, usually controlled by Alexa
+heat_bed_for_1_hour:
+  sequence:
+    - service: input_boolean.turn_off
+      entity_id: input_boolean.bedtime_soon
+    - service: eight_sleep.heat_set
+      data_template:
+        entity_id: sensor.eight_left_bed_state
+        target: '{{ states.input_number.eight_left_heat_run_temp.state | int }}'
+        duration: '{{ states.input_number.eight_left_heat_run_minutes.state | int * 60}}'
+    - service: eight_sleep.heat_set
+      data_template:
+        entity_id: sensor.eight_right_bed_state
+        target: '{{ states.input_number.eight_right_heat_run_temp.state | int }}'
+        duration: '{{ states.input_number.eight_right_heat_run_minutes.state | int * 60}}'
